@@ -13,7 +13,9 @@ type S3Client struct {
 	Client *minio.Client
 }
 
-var S3Instance *S3Client
+var S3Instance = &S3Client{
+	Client: nil,
+}
 
 func ConnectMinio(cfg *config.Config) (*S3Client, error) {
 	var err error

@@ -17,10 +17,11 @@ type Media struct {
 	ID          int       `json:"id" gorm:"primaryKey"`
 	Type        MediaType `json:"type" gorm:"type:text"`
 	Duration    int       `json:"duration"`
-	Cover       *File     `json:"cover" gorm:"foreignKey:MediaID;references:ID"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
-	Url         string    `json:"url"`
 
-	Tags []*Tag `json:"tags" gorm:"many2many:tagged_media;"`
+	Url    *string `json:"url"`
+	Source *File   `json:"source" gorm:"foreignKey:MediaID;references:ID"`
+	Cover  *File   `json:"cover" gorm:"foreignKey:MediaID;references:ID"`
+	Tags   []*Tag  `json:"tags" gorm:"many2many:tagged_media;"`
 }
