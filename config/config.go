@@ -31,6 +31,8 @@ type Config struct {
 	MinioBucketName string
 }
 
+var ConfigInstance Config
+
 // LoadConfig loads the configuration from environment variables
 func LoadConfig() Config {
 	err := godotenv.Load()
@@ -112,7 +114,7 @@ func LoadConfig() Config {
 	minioSecretKey := os.Getenv("MINIO_SECRET_KEY")
 	minioBucketName := os.Getenv("MINIO_BUCKET_NAME")
 
-	return Config{
+	ConfigInstance = Config{
 		DBHost:     dbHost,
 		DBPort:     dbPort,
 		DBUser:     dbUser,
@@ -133,6 +135,12 @@ func LoadConfig() Config {
 		MinioSecretKey:  minioSecretKey,
 		MinioBucketName: minioBucketName,
 	}
+
+	return ConfigInstance
+}
+
+func GetConfig() *Config {
+	return &ConfigInstance
 }
 
 // GetDatabaseURL returns the database connection URL

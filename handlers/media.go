@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"go-postgres-gorm-gin-api/models"
+	"go-postgres-gorm-gin-api/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 type MediaHandler struct {
@@ -21,9 +24,13 @@ type GetMediaResponse struct {
 
 func (h *MediaHandler) GetResults(c *gin.Context) {
 	var media []models.Media
-	if err := h.DB.Preload("Tags").Find(&media).Error; err != nil {
+	if err := h.DB.Preload("Tags").Preload("Cover").Find(&media).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Failed to fetch media"})
 		return
+	}
+
+	for i := range media {
+		media[i].Cover.Path = utils.GenerateFullFilePath(media[i].Cover.Path)
 	}
 
 	c.JSON(200, GetMediaResponse{
@@ -39,23 +46,14 @@ func (h *MediaHandler) CreateMedia(c *gin.Context) {
 		return
 	}
 
-	if media.Type == models.MediaTypeAudioSoundCloud {
-		media, err := h.CreateSoundcloudMedia(&media)
-		if err != nil {
-			c.JSON(500, gin.H{"error": "Failed to create media"})
-			return
-		}
+	spew.Dump(media)
 
-		c.JSON(200, media)
-	}
-}
-
-func (h *MediaHandler) CreateSoundcloudMedia(m *models.Media) (*models.Media, error) {
-	if err := h.DB.Create(&m).Error; err != nil {
-		return nil, err
+	if err := h.DB.Create(&media).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to create tag"})
+		return
 	}
 
-	return m, nil
+	c.JSON(200, "ok")
 }
 
 func (h *MediaHandler) UpdateMediaTags(m *models.Media, ts []*models.Tag) error {
