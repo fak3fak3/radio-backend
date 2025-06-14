@@ -7,6 +7,7 @@ import (
 	"go-postgres-gorm-gin-api/config"
 	"go-postgres-gorm-gin-api/db"
 	"go-postgres-gorm-gin-api/handlers"
+	"go-postgres-gorm-gin-api/livego"
 	"go-postgres-gorm-gin-api/s3"
 
 	"github.com/gin-gonic/gin"
@@ -51,24 +52,43 @@ func main() {
 		c.Next()
 	})
 
-	chatHandler := handlers.NewChatHandler(postgres, botInstance)
-	router.GET("/ws/chat", chatHandler.ConnectToChatWebSocket)
+	liveGo := livego.NewLiveGoLinstance(postgres)
+	liveGo.Init()
 
-	apiGroup := router.Group("/api")
+	adminApi := router.Group("/api")
 	{
 		tagHandler := handlers.NewTagHandler(postgres)
-		apiGroup.GET("/tags", tagHandler.GetTags)
-		apiGroup.POST("/tags", tagHandler.CreateTag)
-		apiGroup.GET("/tags/:id", tagHandler.GetTag)
-		apiGroup.PUT("/tags/:id", tagHandler.UpdateTag)
-		apiGroup.DELETE("/tags/:id", tagHandler.DeleteTag)
+		adminApi.GET("/tags", tagHandler.GetTags)
+		adminApi.POST("/tags", tagHandler.CreateTag)
+		adminApi.GET("/tags/:id", tagHandler.GetTag)
+		adminApi.PUT("/tags/:id", tagHandler.UpdateTag)
+		adminApi.DELETE("/tags/:id", tagHandler.DeleteTag)
 
 		mediaHandler := handlers.NewMediaHandler(postgres)
-		apiGroup.GET("/media", mediaHandler.GetResults)
-		apiGroup.POST("/media", mediaHandler.CreateMedia)
+		adminApi.GET("/media", mediaHandler.GetResults)
+		adminApi.GET("/media/:id", mediaHandler.GetMedia)
+		adminApi.POST("/media", mediaHandler.CreateMedia)
+		adminApi.DELETE("/media/:id", mediaHandler.DeleteMedia)
+		adminApi.POST("/toggle-media-visibility/:id", mediaHandler.ToggleMediaVisibility)
 
 		fileHandler := handlers.NewFileHandler(postgres, s3instance)
-		apiGroup.POST("/files/upload", fileHandler.UploadFileHandler)
+		adminApi.POST("/files/upload", fileHandler.UploadFileHandler)
+
+		streamHandler := handlers.NewStreamHandler(postgres)
+		adminApi.GET("/stream-status", streamHandler.GetStreamStatus)
+		adminApi.GET("/stream-key", streamHandler.GetStreamKeyByRoom)
+	}
+
+	publicApi := router.Group("/public")
+	{
+		mediaHandler := handlers.NewMediaHandler(postgres)
+		publicApi.GET("/media", mediaHandler.GetMedias)
+
+		streamHandler := handlers.NewStreamHandler(postgres)
+		publicApi.GET("/hls-stream", streamHandler.GetStreamProxy)
+
+		chatHandler := handlers.NewChatHandler(postgres, botInstance)
+		publicApi.GET("/ws/chat", chatHandler.ConnectToChatWebSocket)
 	}
 
 	router.Run(":" + cfg.Port)

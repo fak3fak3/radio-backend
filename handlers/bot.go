@@ -3,6 +3,7 @@ package handlers
 import (
 	"go-postgres-gorm-gin-api/models"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/websocket"
 	tele "gopkg.in/telebot.v4"
 	"gorm.io/gorm"
@@ -24,12 +25,15 @@ func (h *BotHandler) HandleGroupMessage(c tele.Context) error {
 		Username: c.Sender().Username,
 		Date:     c.Message().Time(),
 		Platform: models.PlatformTelegram,
+		Type:     models.MessageChat,
 	}
 
 	msgBytes, err := msg.ToJSON()
 	if err != nil {
 		return err
 	}
+
+	spew.Dump(msg)
 
 	for client := range cs {
 		err := client.WriteMessage(websocket.TextMessage, msgBytes)

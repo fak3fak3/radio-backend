@@ -40,41 +40,45 @@ var ActiveConnections = Connections{
 	Clients: make(map[*websocket.Conn]bool),
 }
 
-func (h *ChatHandler) AddConnections(c *websocket.Conn) {
-	ActiveConnections.MU.Lock()
-	defer ActiveConnections.MU.Unlock()
-	ActiveConnections.Clients[c] = true
+func (cn *Connections) AddConnections(c *websocket.Conn) {
+	cn.MU.Lock()
+	defer cn.MU.Unlock()
+	cn.Clients[c] = true
 }
 
-func (h *ChatHandler) RemoveConnections(c *websocket.Conn) {
-	ActiveConnections.MU.Lock()
-	defer ActiveConnections.MU.Unlock()
+func (cn *Connections) RemoveConnections(c *websocket.Conn) {
+	cn.MU.Lock()
+	defer cn.MU.Unlock()
 	c.Close()
-	delete(ActiveConnections.Clients, c)
+	delete(cn.Clients, c)
 
-	fmt.Printf("FROM REMOVE HANDLER: Clients: %v\n", ActiveConnections.Clients)
+	fmt.Printf("FROM REMOVE HANDLER: Clients: %v\n", cn.Clients)
 }
 
-func (h *ChatHandler) BroadcastMessage(message []byte) {
+func (h *ChatHandler) BroadcastMessage(msg *models.Message) {
 	ActiveConnections.MU.Lock()
 	defer ActiveConnections.MU.Unlock()
-
-	var msg models.Message
-	err := json.Unmarshal(message, &msg)
-	if err != nil {
-		log.Println("Error unmarshalling message:", err)
-		return
-	}
 
 	if msg.Platform == models.PlatformWeb {
-		cfg := config.LoadConfig()
-		msgText := fmt.Sprintf("**%s**: %s", msg.Username, msg.Text)
+		if msg.Type == models.MessageChat {
 
-		h.TgBot.Send(&tele.Chat{ID: cfg.TelegramChatId}, msgText, tele.ModeMarkdownV2)
+			cfg := config.LoadConfig()
+			msgText := fmt.Sprintf("**%s**: %s", msg.Username, msg.Text)
+
+			h.TgBot.Send(&tele.Chat{ID: cfg.TelegramChatId}, msgText, tele.ModeMarkdownV2)
+		}
 	}
 
 	for client := range ActiveConnections.Clients {
-		err := client.WriteMessage(websocket.TextMessage, message)
+		msgBytes, err := msg.ToJSON()
+		if err != nil {
+			return
+		}
+
+		err = client.WriteMessage(websocket.TextMessage, msgBytes)
+		if err != nil {
+			return
+		}
 
 		if err != nil {
 			client.Close()
@@ -91,11 +95,11 @@ func (h *ChatHandler) ConnectToChatWebSocket(c *gin.Context) {
 
 	done := make(chan struct{})
 
-	h.AddConnections(conn)
+	ActiveConnections.AddConnections(conn)
 
 	go func() {
 		defer func() {
-			h.RemoveConnections(conn)
+			ActiveConnections.RemoveConnections(conn)
 			done <- struct{}{}
 		}()
 		for {
@@ -104,7 +108,14 @@ func (h *ChatHandler) ConnectToChatWebSocket(c *gin.Context) {
 				break
 			}
 
-			h.BroadcastMessage(message)
+			var msg models.Message
+			err = json.Unmarshal(message, &msg)
+			if err != nil {
+				log.Println("Error unmarshalling message:", err)
+				return
+			}
+
+			h.BroadcastMessage(&msg)
 
 		}
 	}()

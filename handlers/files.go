@@ -37,6 +37,8 @@ func (h FileHandler) UploadFileHandler(c *gin.Context) {
 		return
 	}
 
+	destination := c.PostForm("destination")
+
 	objectName := uuid.New().String()
 	bucketName := cfg.MinioBucketName
 	fileType := file.Header.Get("Content-Type")
@@ -48,8 +50,9 @@ func (h FileHandler) UploadFileHandler(c *gin.Context) {
 	}
 
 	dbFile := models.File{
-		Path: "/" + objectName,
-		Type: fileType,
+		Path:        "/" + objectName,
+		Type:        fileType,
+		Destination: destination,
 	}
 
 	err = h.DB.Create(&dbFile).Error

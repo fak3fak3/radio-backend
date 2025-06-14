@@ -9,16 +9,19 @@ const (
 	MediaTypeAudioSoundCloud MediaType = "audio_soundcloud"
 	MediaTypeVideoSelfHosted MediaType = "video_self_hosted"
 	MediaTypeVideoYouTube    MediaType = "video_youtube"
+	MediaTypeVideoStream     MediaType = "stream"
 )
 
 type Media struct {
-	gorm.Model
+	gorm.Model `json:"-"`
 
 	ID          int       `json:"id" gorm:"primaryKey"`
 	Type        MediaType `json:"type" gorm:"type:text"`
 	Duration    int       `json:"duration"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
+
+	Hidden bool `json:"hidden"`
 
 	Url    *string `json:"url"`
 	Source *File   `json:"source" gorm:"foreignKey:MediaID;references:ID"`

@@ -12,11 +12,19 @@ const (
 	PlatformWeb      Platform = "web"
 )
 
+type MessageType string
+
+const (
+	MessageChat MessageType = "chat"
+	MessageInfo MessageType = "info"
+)
+
 type Message struct {
-	Text     string    `json:"text"`
-	Username string    `json:"username"`
-	Date     time.Time `json:"date"`
-	Platform Platform  `json:"platform"`
+	Text     string      `json:"text"`
+	Username string      `json:"username"`
+	Date     time.Time   `json:"date"`
+	Platform Platform    `json:"platform"`
+	Type     MessageType `json:"type"`
 }
 
 func (m *Message) ToJSON() ([]byte, error) {

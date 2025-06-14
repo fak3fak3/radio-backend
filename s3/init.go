@@ -42,10 +42,24 @@ func ConnectMinio(cfg *config.Config) (*S3Client, error) {
 		if err != nil {
 			log.Fatalln(err)
 		}
+
+		err = S3Instance.Client.SetBucketPolicy(context.Background(), cfg.MinioBucketName, createPolicyString(cfg.MinioBucketName))
 		log.Printf("Bucket %s created successfully\n", cfg.MinioBucketName)
 	} else {
 		log.Printf("Bucket %s already exists\n", cfg.MinioBucketName)
 	}
 
 	return S3Instance, nil
+}
+
+func createPolicyString(bucket string) string {
+	return `{
+  "Version":"2012-10-17",
+  "Statement":[{
+    "Effect":"Allow",
+    "Principal":"*",
+    "Action":["s3:GetObject"],
+    "Resource":["arn:aws:s3:::` + bucket + `/*"]
+  }]
+}`
 }
