@@ -1,17 +1,16 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"go-postgres-gorm-gin-api/models"
 	"io"
-	"log"
 	"net/http"
 	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type StreamHandler struct {
@@ -60,33 +59,71 @@ func (h *StreamHandler) GetStreams(c *gin.Context) {
 
 }
 
-type GetStreamKeyByRoomResponse struct {
-	Data string `json:"data"`
-}
+func (h *StreamHandler) GetStreamCredentials(c *gin.Context) {
+	var credentials []models.StreamCredentials
 
-func (h *StreamHandler) GetStreamKeyByRoom(c *gin.Context) {
-	room := c.Query("room")
-	url := fmt.Sprintf("http://localhost:8090/control/get?room=%s", room)
-
-	resp, err := http.Get(url)
+	err := h.DB.Find(&credentials).Error
 	if err != nil {
-		c.JSON(400, http.StatusBadGateway)
-		return
+		c.JSON(500, &gin.H{"error": err.Error})
+	} else {
+		c.JSON(200, &gin.H{"credentials": credentials})
 	}
-	defer resp.Body.Close()
-
-	var res GetStreamKeyByRoomResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		c.Status(http.StatusInternalServerError)
-		return
-	}
-
-	c.JSON(http.StatusOK, res)
 }
 
-func (h *StreamHandler) AuthentificateStreamHook(c *gin.Context) {
-	body, _ := io.ReadAll(c.Request.Body)
-	log.Println("got hook", string(body))
-	log.Println("auth hook called")
-	c.JSON(200, gin.H{"code": 0, "msg": "ok"})
+func (h *StreamHandler) DeleteStreamCredentials(c *gin.Context) {
+	id := c.Param("id")
+	var creds models.StreamCredentials
+	if err := h.DB.First(&creds, id).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Credentails not found"})
+		return
+	}
+
+	if err := h.DB.Delete(&creds).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to delete credentials"})
+		return
+	}
+
+	var credentials []models.StreamCredentials
+	if err := h.DB.Find(&credentials).Error; err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"credentials": credentials})
+}
+
+type CreateStreamCredentialsRequest struct {
+	Room     string `json:"room"`
+	Password string `json:"password"`
+}
+
+func (h *StreamHandler) CreateStreamCredentials(c *gin.Context) {
+	var req CreateStreamCredentialsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	creds := models.StreamCredentials{
+		Room:     req.Room,
+		Password: req.Password,
+	}
+
+	err := h.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "room"}}, // уникальный ключ
+		DoUpdates: clause.AssignmentColumns([]string{"password", "updated_at"}),
+	}).Create(&creds).Error
+
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	var credentials []models.StreamCredentials
+	if err := h.DB.Find(&credentials).Error; err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"credentials": credentials})
 }

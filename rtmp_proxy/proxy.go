@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"go-postgres-gorm-gin-api/models"
 	"io"
 	"log"
 	"net"
@@ -12,7 +13,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/davecgh/go-spew/spew"
 	"gorm.io/gorm"
 )
 
@@ -100,7 +100,11 @@ func (p *Proxy) handleConn(client net.Conn) {
 		return
 	}
 
-	p.checkPass(room, pass)
+	ok := p.checkPass(room, pass)
+
+	if !ok {
+		return
+	}
 
 	// передаём всё что накопили на сервер
 	if _, err := server.Write(buf); err != nil {
@@ -123,9 +127,15 @@ func (p *Proxy) handleConn(client net.Conn) {
 	<-done
 }
 
-func (p *Proxy) checkPass(room, pass string) (bool, error) {
-	spew.Dump(room, pass)
-	return true, nil
+func (p *Proxy) checkPass(room, pass string) bool {
+	var creds models.StreamCredentials
+
+	err := p.DB.Where("room = ?", room).First(&creds).Error
+	if err != nil {
+		return false
+	}
+
+	return pass == creds.Password
 }
 
 func (p *Proxy) Stop() {

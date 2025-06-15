@@ -84,13 +84,9 @@ func main() {
 
 		streamHandler := handlers.NewStreamHandler(postgres)
 		adminApi.GET("/streams", streamHandler.GetStreams)
-		adminApi.GET("/stream-key", streamHandler.GetStreamKeyByRoom)
-	}
-
-	streamAuthApi := router.Group("/srs-api")
-	{
-		streamHandler := handlers.NewStreamHandler(postgres)
-		streamAuthApi.POST("/auth", streamHandler.AuthentificateStreamHook)
+		adminApi.GET("/stream-credentials", streamHandler.GetStreamCredentials)
+		adminApi.DELETE("/stream-credentials/:id", streamHandler.DeleteStreamCredentials)
+		adminApi.POST("/stream-credentials", streamHandler.CreateStreamCredentials)
 	}
 
 	publicApi := router.Group("/public")

@@ -9,11 +9,11 @@ import (
 type StreamCredentials struct {
 	gorm.Model `json:"-"`
 
-	ID       uint   `json:"id"`
-	Room     string `json:"room"`
+	ID       uint   `json:"id" `
+	Room     string `json:"room" gorm:"uniqueIndex"`
 	Password string `json:"password"`
 
-	Sessions []StreamSession `gorm:"foreignKey:StreamCredentialsID;references:ID"`
+	// Sessions []StreamSession `gorm:"foreignKey:StreamCredentialsID;references:ID"`
 }
 
 type StreamSession struct {
