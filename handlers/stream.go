@@ -48,14 +48,14 @@ func (h *StreamHandler) GetStreamProxy(c *gin.Context) {
 	io.Copy(c.Writer, resp.Body)
 }
 
-func (h *StreamHandler) GetStreamStatus(c *gin.Context) {
-	var streamData models.StreamData
+func (h *StreamHandler) GetStreams(c *gin.Context) {
+	var streamData []models.StreamData
 
-	err := h.DB.Where("id = ?", 1).First(&streamData).Error
+	err := h.DB.Find(&streamData).Error
 	if err != nil {
 		c.JSON(500, &gin.H{"error": err.Error})
 	} else {
-		c.JSON(200, &gin.H{"stream": streamData})
+		c.JSON(200, &gin.H{"streams": streamData})
 	}
 
 }

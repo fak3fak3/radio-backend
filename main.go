@@ -83,14 +83,13 @@ func main() {
 		adminApi.POST("/files/upload", fileHandler.UploadFileHandler)
 
 		streamHandler := handlers.NewStreamHandler(postgres)
-		adminApi.GET("/stream-status", streamHandler.GetStreamStatus)
+		adminApi.GET("/streams", streamHandler.GetStreams)
 		adminApi.GET("/stream-key", streamHandler.GetStreamKeyByRoom)
 	}
 
 	streamAuthApi := router.Group("/srs-api")
 	{
 		streamHandler := handlers.NewStreamHandler(postgres)
-
 		streamAuthApi.POST("/auth", streamHandler.AuthentificateStreamHook)
 	}
 

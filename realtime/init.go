@@ -3,12 +3,10 @@ package realtime
 import (
 	"encoding/json"
 	"fmt"
-	"go-postgres-gorm-gin-api/models"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"gorm.io/gorm"
 )
 
@@ -23,28 +21,19 @@ func NewRealtimeLinstance(db *gorm.DB) *RealtimeInstance {
 }
 
 func (h *RealtimeInstance) Init() {
-	ch := make(chan string)
-	h.StartPollingStreamStatus(ch)
+	streamsChan := make(chan []Stream)
+	h.StartPollingStreamStatus(streamsChan)
 
 	go func() {
-		for status := range ch {
-			err := h.DB.Model(&models.StreamData{}).Where("id = ?", 1).Update("status", status).Error
-			if err != nil {
-				panic(err)
-			}
+		for streams := range streamsChan {
+			h.syncStreams(streams)
 		}
 	}()
 }
 
-func (h *RealtimeInstance) StartPollingStreamStatus(out chan<- string) {
+func (h *RealtimeInstance) StartPollingStreamStatus(out chan<- []Stream) {
 	go func() {
 		for {
-			var streamData models.StreamData
-			err := h.DB.First(&streamData, 1).Error
-			if err != nil {
-				panic(err)
-			}
-
 			resp, err := http.Get(fmt.Sprint("http://localhost:1985/api/v1/streams/"))
 			if err != nil {
 				log.Println("request failed:", err)
@@ -62,21 +51,7 @@ func (h *RealtimeInstance) StartPollingStreamStatus(out chan<- string) {
 			}
 			resp.Body.Close()
 
-			var isMainStreamRunning = false
-
-			for _, stream := range data.Streams {
-				spew.Dump(stream.Name)
-				if stream.Name == "main" {
-					isMainStreamRunning = true
-				}
-			}
-
-			if isMainStreamRunning {
-				out <- "running"
-
-			} else {
-				out <- "empty"
-			}
+			out <- data.Streams
 
 			time.Sleep(1 * time.Second)
 		}
