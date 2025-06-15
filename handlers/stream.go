@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go-postgres-gorm-gin-api/models"
 	"io"
+	"log"
 	"net/http"
 	"sync"
 
@@ -81,4 +82,11 @@ func (h *StreamHandler) GetStreamKeyByRoom(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, res)
+}
+
+func (h *StreamHandler) AuthentificateStreamHook(c *gin.Context) {
+	body, _ := io.ReadAll(c.Request.Body)
+	log.Println("got hook", string(body))
+	log.Println("auth hook called")
+	c.JSON(200, gin.H{"code": 0, "msg": "ok"})
 }

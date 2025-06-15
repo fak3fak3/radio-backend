@@ -24,7 +24,14 @@ func ConnectAndMigratePostgres(cfg *config.Config) (*gorm.DB, error) {
 	DB = db
 
 	// AutoMigrate the schema
-	db.AutoMigrate(&models.Media{}, &models.Tag{}, &models.File{}, &models.StreamData{})
+	db.AutoMigrate(
+		&models.Media{},
+		&models.Tag{},
+		&models.File{},
+		&models.StreamData{},
+		&models.StreamCredentials{},
+		&models.StreamSession{},
+	)
 
 	return db, nil
 }

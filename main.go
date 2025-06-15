@@ -7,7 +7,8 @@ import (
 	"go-postgres-gorm-gin-api/config"
 	"go-postgres-gorm-gin-api/db"
 	"go-postgres-gorm-gin-api/handlers"
-	"go-postgres-gorm-gin-api/livego"
+	"go-postgres-gorm-gin-api/realtime"
+	"go-postgres-gorm-gin-api/rtmp_proxy"
 	"go-postgres-gorm-gin-api/s3"
 
 	"github.com/gin-gonic/gin"
@@ -52,8 +53,15 @@ func main() {
 		c.Next()
 	})
 
-	liveGo := livego.NewLiveGoLinstance(postgres)
-	liveGo.Init()
+	realtime := realtime.NewRealtimeLinstance(postgres)
+	realtime.Init()
+
+	proxy := rtmp_proxy.NewProxy(":19350", "localhost:1935", postgres)
+	err = proxy.Start()
+	if err != nil {
+		log.Fatal("failed to start rtmp proxy:", err)
+	}
+	defer proxy.Stop()
 
 	adminApi := router.Group("/api")
 	{
@@ -79,6 +87,13 @@ func main() {
 		adminApi.GET("/stream-key", streamHandler.GetStreamKeyByRoom)
 	}
 
+	streamAuthApi := router.Group("/srs-api")
+	{
+		streamHandler := handlers.NewStreamHandler(postgres)
+
+		streamAuthApi.POST("/auth", streamHandler.AuthentificateStreamHook)
+	}
+
 	publicApi := router.Group("/public")
 	{
 		mediaHandler := handlers.NewMediaHandler(postgres)
@@ -91,5 +106,5 @@ func main() {
 		publicApi.GET("/ws/chat", chatHandler.ConnectToChatWebSocket)
 	}
 
-	router.Run(":" + cfg.Port)
+	router.Run("0.0.0.0:" + cfg.Port)
 }
